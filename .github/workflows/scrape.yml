@@ -28,6 +28,8 @@ jobs:
           playwright install-deps
 
       - name: Run Scraper
+      env:
+          BROWSERLESS_TOKEN: ${{ secrets.BROWSERLESS_TOKEN }}
         run: python scripts/scrape_flights.py
 
       - name: Copy data to public (for deployment)
