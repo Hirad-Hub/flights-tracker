@@ -30,8 +30,23 @@ async def scrape_google_flights():
         "flights": []
     }
 
-    async with async_playwright() as p:
+async with async_playwright() as p:
+    # Use Browserless token from environment variable to avoid being blocked
+    browserless_token = os.getenv("BROWSERLESS_TOKEN")
+    
+    if browserless_token:
+        logging.info("Connecting to Browserless.io...")
+        endpoint = f"wss://production-sfo.browserless.io/chromium/stealth?token={browserless_token}"
+        browser = await p.chromium.connect_over_cdp(endpoint)
+    else:
+        logging.warning("No BROWSERLESS_TOKEN found. Running locally (might be blocked).")
         browser = await p.chromium.launch(headless=True)
+
+    # Note: connect_over_cdp already provides a context. 
+    # If using Browserless, we get the existing context.
+    if browser.contexts:
+        context = browser.contexts[0]
+    else:
         context = await browser.new_context(
              viewport={'width': 1280, 'height': 800},
              user_agent='Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
