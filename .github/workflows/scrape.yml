@@ -27,7 +27,7 @@ jobs:
           playwright install chromium
           playwright install-deps
 
-- name: Run Scraper
+      - name: Run Scraper
         env:
           BROWSERLESS_TOKEN: ${{ secrets.BROWSERLESS_TOKEN }}
         run: python scripts/scrape_flights.py
@@ -36,8 +36,6 @@ jobs:
         run: |
           mkdir -p public/data
           cp data/flights.json public/data/flights.json || true
-          # Also, if we want to commit it back so locally we have it:
-          # The script saves to data/flights.json. We should commit that.
 
       - name: Commit and Push changes
         uses: stefanzweifel/git-auto-commit-action@v5
