@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Flight Price Tracker</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        glass: 'rgba(255, 255, 255, 0.1)',
+                        glassBorder: 'rgba(255, 255, 255, 0.2)',
+                    },
+                    backdropBlur: {
+                        xs: '2px',
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+            min-height: 100vh;
+            color: #e2e8f0;
+            font-family: 'Inter', sans-serif;
+        }
+        .glass-panel {
+            background: rgba(30, 41, 59, 0.7);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #0f172a; 
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #334155; 
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #475569; 
+        }
+    </style>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body class="antialiased p-6 md:p-12 flex flex-col items-center">
+
+    <!-- Main Container -->
+    <div class="w-full max-w-5xl space-y-8">
+        
+        <!-- Header -->
+        <div class="text-center space-y-2">
+            <h1 class="text-4xl md:text-5xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-emerald-400">
+                Flight Radar
+            </h1>
+            <p class="text-slate-400 text-lg">Track the best deals from your favorite airports</p>
+        </div>
+
+        <!-- Controls Section -->
+        <div class="glass-panel p-6 rounded-2xl shadow-xl space-y-6">
+            
+            <!-- Search / Autocomplete -->
+            <div class="relative max-w-md mx-auto">
+                <label for="departure-search" class="block text-sm font-medium text-slate-300 mb-2">Departure Airport</label>
+                <div class="relative">
+                    <input type="text" id="departure-search" 
+                        class="w-full bg-slate-800/50 border border-slate-600 rounded-lg py-3 px-4 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-white placeholder-slate-500 transition-all"
+                        placeholder="Type city or code (e.g., AMS, London)..."
+                        autocomplete="off">
+                    <div id="autocomplete-list" class="absolute z-10 w-full mt-1 bg-slate-800 border border-slate-700 rounded-lg shadow-2xl hidden max-h-60 overflow-y-auto custom-scrollbar">
+                        <!-- Suggestions will be injected here -->
+                    </div>
+                </div>
+                <p id="search-status" class="text-red-400 text-sm mt-1 hidden">No airport found</p>
+            </div>
+
+            <!-- Quick Links -->
+            <div class="flex flex-wrap justify-center gap-3">
+                <span class="text-slate-400 text-sm py-1">Quick Select:</span>
+                <button class="quick-link px-3 py-1 bg-slate-700/50 hover:bg-slate-600 rounded-full text-xs font-semibold text-blue-300 border border-slate-600 transition-colors" data-code="LHR">London (LHR)</button>
+                <button class="quick-link px-3 py-1 bg-slate-700/50 hover:bg-slate-600 rounded-full text-xs font-semibold text-blue-300 border border-slate-600 transition-colors" data-code="IST">Istanbul (IST)</button>
+                <button class="quick-link px-3 py-1 bg-slate-700/50 hover:bg-slate-600 rounded-full text-xs font-semibold text-blue-300 border border-slate-600 transition-colors" data-code="CDG">Paris (CDG)</button>
+                <button class="quick-link px-3 py-1 bg-slate-700/50 hover:bg-slate-600 rounded-full text-xs font-semibold text-blue-300 border border-slate-600 transition-colors" data-code="AMS">Amsterdam (AMS)</button>
+                <button class="quick-link px-3 py-1 bg-slate-700/50 hover:bg-slate-600 rounded-full text-xs font-semibold text-blue-300 border border-slate-600 transition-colors" data-code="MAD">Madrid (MAD)</button>
+                <button class="quick-link px-3 py-1 bg-slate-700/50 hover:bg-slate-600 rounded-full text-xs font-semibold text-blue-300 border border-slate-600 transition-colors" data-code="RTM">Rotterdam (RTM)</button>
+            </div>
+        </div>
+
+        <!-- Results Section -->
+        <div class="glass-panel rounded-2xl overflow-hidden shadow-2xl hidden" id="results-panel">
+            <div class="p-6 border-b border-slate-700/50 flex justify-between items-center bg-slate-800/30">
+                <h2 class="text-xl font-semibold text-white">
+                    Flights from <span id="selected-departure" class="text-blue-400">...</span>
+                </h2>
+                <span class="text-sm text-slate-500" id="result-count">0 flights found</span>
+            </div>
+            
+            <div class="overflow-x-auto">
+                <table class="w-full text-left text-sm text-slate-300">
+                    <thead class="bg-slate-800/50 text-xs uppercase font-medium text-slate-400">
+                        <tr>
+                            <th class="px-6 py-4 cursor-pointer hover:text-white transition-colors" id="sort-dest">Destination</th>
+                            <th class="px-6 py-4 cursor-pointer hover:text-white transition-colors" id="sort-date">Date</th>
+                            <th class="px-6 py-4 cursor-pointer hover:text-white transition-colors" id="sort-dur">Duration/Nights</th>
+                            <th class="px-6 py-4 cursor-pointer text-emerald-400 hover:text-emerald-300 transition-colors" id="sort-price">Price ▾</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-700/50" id="flights-table-body">
+                        <!-- Rows -->
+                    </tbody>
+                </table>
+            </div>
+            <div class="p-4 bg-slate-800/30 text-center border-t border-slate-700/50">
+               <p class="text-xs text-slate-500">
+                   Data last checked: <span id="last-checked-time">--</span>
+               </p>
+            </div>
+        </div>
+        
+        <!-- Empty State -->
+        <div id="empty-state" class="text-center py-12">
+            <div class="inline-block p-4 rounded-full bg-slate-800/50 mb-4 text-slate-500">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                </svg>
+            </div>
+            <p class="text-slate-400">Select an airport to view flight deals.</p>
+        </div>
+
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>

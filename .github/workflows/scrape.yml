@@ -1,0 +1,44 @@
+name: Scrape Flights
+
+on:
+  schedule:
+    - cron: '0 */6 * * *' # Every 6 hours
+  workflow_dispatch: # Manual trigger
+
+permissions:
+  contents: write
+
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          playwright install chromium
+          playwright install-deps
+
+      - name: Run Scraper
+        run: python scripts/scrape_flights.py
+
+      - name: Copy data to public (for deployment)
+        run: |
+          mkdir -p public/data
+          cp data/flights.json public/data/flights.json || true
+          # Also, if we want to commit it back so locally we have it:
+          # The script saves to data/flights.json. We should commit that.
+
+      - name: Commit and Push changes
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "Update flight data [skip ci]"
+          file_pattern: "data/flights.json public/data/flights.json"
