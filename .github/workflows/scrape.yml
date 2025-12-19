@@ -42,3 +42,8 @@ jobs:
         with:
           commit_message: "Update flight data [skip ci]"
           file_pattern: "data/flights.json public/data/flights.json"
+
+      - name: Deploy to Surge
+        run: |
+          npm install -g surge
+          surge public flight-tracker.surge.sh --token ${{ secrets.SURGE_TOKEN }}
