@@ -35,7 +35,17 @@ async def scrape_google_flights():
                 browser = await p.chromium.connect_over_cdp(endpoint)
             else:
                 print("Running locally (No Browserless token).")
-                browser = await p.chromium.launch(headless=True)
+                # Use "new" headless mode which is more reliable for modern sites
+                # Add args to help with rendering and detection
+                browser = await p.chromium.launch(
+                    headless=True,
+                    args=[
+                        "--disable-blink-features=AutomationControlled",
+                        "--no-sandbox",
+                        "--disable-setuid-sandbox",
+                        "--disable-gpu" 
+                    ]
+                )
         except Exception as e:
             print(f"CRITICAL: Failed to launch browser: {e}")
             return
@@ -56,30 +66,61 @@ async def scrape_google_flights():
                 page = await context.new_page()
                 await stealth_async(page)
                 
-                # Wait for the network to be quiet so prices have time to load
-                await page.goto(url, timeout=90000, wait_until="networkidle")
-                
-                # TARGETING: Specifically look for flight result cards (class pIos7c)
+                # Consent handling: Try to click "Accept all" or "Reject all" if present
                 try:
-                    await page.wait_for_selector('li.pIos7c', timeout=15000)
+                    consent_button = await page.query_selector('button[aria-label="Accept all"]')
+                    if not consent_button:
+                        consent_button = await page.query_selector('button:has-text("Accept all")')
+                    if not consent_button:
+                        consent_button = await page.query_selector('button:has-text("Reject all")')
+                    
+                    if consent_button:
+                        print(f"Found consent button. Clicking...")
+                        await consent_button.click()
+                        await page.waitForTimeout(2000) # Wait for overlay to disappear
+                except Exception as e:
+                    print(f"Consent handling error (non-critical): {e}")
+
+                # TARGETING: Specifically look for flight result cards
+                # Robust selector identified: li[jsname="W4feEd"]
+                card_selector = 'li[jsname="W4feEd"]' 
+                
+                try:
+                    await page.wait_for_selector(card_selector, timeout=15000)
                 except:
-                    print(f"No flight cards found for {airport_name} within 15s.")
+                    print(f"No flight cards found for {airport_name} within 15s (selector: {card_selector}).")
                     continue
 
-                flight_cards = await page.query_selector_all('li.pIos7c')
+                flight_cards = await page.query_selector_all(card_selector)
                 
                 for card in flight_cards:
                     destination_el = await card.query_selector('h3')
+                    # Look for price in multiple possible spans/divs
                     price_el = await card.query_selector('span[role="text"]')
+                    if not price_el:
+                         price_el = await card.query_selector('.QB2Jof') # Secondary known price class
                     
-                    if destination_el and price_el:
+                    if destination_el:
                         dest_text = await destination_el.inner_text()
-                        price_text = await price_el.inner_text()
+                        dest_text = dest_text.strip()
+                        
+                        price_text = ""
+                        if price_el:
+                            price_text = await price_el.inner_text()
+                        
+                        # Fallback: if price_el not found, try to find text with € in the whole card
+                        if not price_text or "€" not in price_text:
+                            all_text = await card.inner_text()
+                            # simple heuristic to find price line
+                            for line in all_text.split('\n'):
+                                if '€' in line and len(line) < 20:
+                                    price_text = line
+                                    break
                         
                         if "€" in price_text:
                             results["flights"].append({
                                 "departure_airport": airport_name,
-                                "destination": dest_text.strip(),
+                                "destination": dest_text,
                                 "price": price_text.strip(),
                                 "date": datetime.now().strftime("%Y-%m-%d")
                             })
