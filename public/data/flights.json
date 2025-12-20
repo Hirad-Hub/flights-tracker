@@ -1,33 +1,4 @@
 {
-    "last_checked": "2025-12-19T21:50:00",
-    "flights": [
-        {
-            "departure_airport": "Amsterdam (AMS)",
-            "destination": "London",
-            "price": "€55",
-            "dates": "Aug 20 - Aug 25",
-            "duration": "1 hr 15 min"
-        },
-        {
-            "departure_airport": "Amsterdam (AMS)",
-            "destination": "Paris",
-            "price": "€85",
-            "dates": "Sep 10 - Sep 15",
-            "duration": "1 hr 20 min"
-        },
-        {
-            "departure_airport": "London (LHR)",
-            "destination": "New York",
-            "price": "€450",
-            "dates": "Oct 1 - Oct 10",
-            "duration": "8 hr 00 min"
-        },
-        {
-            "departure_airport": "Istanbul (IST)",
-            "destination": "Berlin",
-            "price": "€120",
-            "dates": "Nov 5 - Nov 12",
-            "duration": "3 hr 10 min"
-        }
-    ]
+  "last_checked": "2025-12-19T21:45:25.643398",
+  "flights": []
 }
