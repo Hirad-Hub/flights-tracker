@@ -87,6 +87,7 @@ async def scrape_google_flights():
                 
                 try:
                     await page.wait_for_selector(card_selector, timeout=15000)
+                    await asyncio.sleep(2)
                 except:
                     print(f"No flight cards found for {airport_name} within 15s (selector: {card_selector}).")
                     continue
