@@ -1,3 +1,15 @@
+import os
+import json
+import logging
+import asyncio
+from datetime import datetime
+from playwright.async_api import async_playwright
+from playwright_stealth import stealth_async
+
+# File paths
+AIRPORTS_FILE = "data/airports.json"
+OUTPUT_FILE = "data/flights.json"
+
 async def scrape_google_flights():
     # 1. Milestone: Check if we even started
     print(f"Starting scraper. Looking for output in: {OUTPUT_FILE}")
@@ -12,4 +24,58 @@ async def scrape_google_flights():
         airports = json.load(f)
         print(f"Loaded {len(airports)} airports to check.")
 
-    results = {"last_checked": datetime.now().isoformat(), "
+    results = {"last_checked": datetime.now().isoformat(), "flights": []}
+
+    async with async_playwright() as p:
+        browserless_token = os.getenv("BROWSERLESS_TOKEN")
+        
+        try:
+            if browserless_token:
+                print("Connecting to Browserless.io...")
+                endpoint = f"wss://production-sfo.browserless.io/chromium/stealth?token={browserless_token}"
+                browser = await p.chromium.connect_over_cdp(endpoint)
+            else:
+                print("Running locally (No Browserless token).")
+                browser = await p.chromium.launch(headless=True)
+        except Exception as e:
+            print(f"CRITICAL: Failed to launch browser: {e}")
+            return
+
+        for airport_name, url in airports.items():
+            if not browser.is_connected():
+                print("Browser disconnected unexpectedly.")
+                break
+
+            print(f"Checking flights for: {airport_name}...")
+            
+            context = await browser.new_context(
+                 viewport={'width': 1280, 'height': 800},
+                 user_agent='Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+            )
+            
+            try:
+                page = await context.new_page()
+                await stealth_async(page)
+                await page.goto(url, timeout=60000, wait_until="domcontentloaded")
+                
+                # --- SCRAPING LOGIC ---
+                # This is where your code finds the prices. 
+                # If this part is missing in your real file, it won't find anything.
+                
+            except Exception as e:
+                print(f"Failed to scrape {airport_name}: {e}")
+            finally:
+                if browser.is_connected():
+                    await context.close()
+
+        if browser.is_connected():
+            await browser.close()
+
+    # 2. Milestone: Check if we are actually writing the file
+    with open(OUTPUT_FILE, 'w') as f:
+        json.dump(results, f, indent=2)
+    print(f"SUCCESS: Saved {len(results['flights'])} flights to {OUTPUT_FILE}")
+
+# --- THE TRIGGER (THE KEY TO THE MACHINE) ---
+if __name__ == "__main__":
+    asyncio.run(scrape_google_flights())
