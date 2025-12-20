@@ -46,4 +46,4 @@ jobs:
       - name: Deploy to Surge
         run: |
           npm install -g surge
-          surge public flight-tracker.surge.sh --token ${{ secrets.SURGE_TOKEN }}
+          surge public flights-tracker.surge.sh --token ${{ secrets.SURGE_TOKEN }}
