@@ -11,7 +11,6 @@ AIRPORTS_FILE = "data/airports.json"
 OUTPUT_FILE = "data/flights.json"
 
 async def scrape_google_flights():
-    # 1. Milestone: Check if we even started
     print(f"Starting scraper. Looking for output in: {OUTPUT_FILE}")
     
     os.makedirs(os.path.dirname(OUTPUT_FILE), exist_ok=True)
@@ -43,7 +42,7 @@ async def scrape_google_flights():
 
         for airport_name, url in airports.items():
             if not browser.is_connected():
-                print("Browser disconnected unexpectedly.")
+                print("Browser disconnected.")
                 break
 
             print(f"Checking flights for: {airport_name}...")
@@ -56,11 +55,33 @@ async def scrape_google_flights():
             try:
                 page = await context.new_page()
                 await stealth_async(page)
-                await page.goto(url, timeout=60000, wait_until="domcontentloaded")
+                # Wait for the network to be quiet so prices have time to load
+                await page.goto(url, timeout=90000, wait_until="networkidle")
                 
-                # --- SCRAPING LOGIC ---
-                # This is where your code finds the prices. 
-                # If this part is missing in your real file, it won't find anything.
+                # Wait for the flight cards to appear on the screen
+                await page.wait_for_selector('li', timeout=20000)
+                
+                # Find all flight cards (Google uses specific list items for these)
+                flight_cards = await page.query_selector_all('li')
+                
+                for card in flight_cards:
+                    destination_el = await card.query_selector('h3')
+                    # Look for the span that usually contains the price text/currency
+                    price_el = await card.query_selector('span[role="text"], span[aria-label*="Euro"]')
+                    
+                    if destination_el and price_el:
+                        dest_text = await destination_el.inner_text()
+                        price_text = await price_el.inner_text()
+                        
+                        if dest_text and price_text and "€" in price_text:
+                            results["flights"].append({
+                                "departure_airport": airport_name,
+                                "destination": dest_text.strip(),
+                                "price": price_text.strip(),
+                                "date": datetime.now().strftime("%Y-%m-%d")
+                            })
+                
+                print(f"Finished {airport_name}. Found {len(results['flights'])} flights so far.")
                 
             except Exception as e:
                 print(f"Failed to scrape {airport_name}: {e}")
@@ -71,11 +92,10 @@ async def scrape_google_flights():
         if browser.is_connected():
             await browser.close()
 
-    # 2. Milestone: Check if we are actually writing the file
+    # Write the results to the file
     with open(OUTPUT_FILE, 'w') as f:
         json.dump(results, f, indent=2)
     print(f"SUCCESS: Saved {len(results['flights'])} flights to {OUTPUT_FILE}")
 
-# --- THE TRIGGER (THE KEY TO THE MACHINE) ---
 if __name__ == "__main__":
     asyncio.run(scrape_google_flights())
